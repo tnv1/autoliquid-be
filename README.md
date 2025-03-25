@@ -6,7 +6,7 @@ AutoLiquid is an autonomous liquidity management system for the Sui blockchain. 
 
 ## Features
 
-- Automated position management for Blufin DEX
+- Automated position management for Bluefin DEX
 - Position monitoring and price tracking
 - Automatic repositioning based on price thresholds
 - User position querying and management

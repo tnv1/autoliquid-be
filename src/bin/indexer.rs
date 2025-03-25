@@ -1,11 +1,29 @@
-use autoliquid_be::blufin::config::IndexerConfig;
-use autoliquid_be::blufin::run_indexer;
+use autoliquid_be::bluefin::indexer::Config;
+use autoliquid_be::bluefin::run_indexer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        // Filter events based on the RUST_LOG environment variable
+        // or fall back to a default level like "info"
+        .with(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info,autoliquid_be=debug,indexer=debug")),
+        )
+        // Format the output with timestamps and colors
+        .with(
+            fmt::layer()
+                .with_target(true)
+                .with_thread_ids(true)
+                .with_file(true)
+                .with_line_number(true),
+        )
+        .init();
 
-    let config = IndexerConfig {
+    let config = Config {
         remote_store_url: "https://checkpoints.mainnet.sui.io".to_string(),
         db_url: "postgresql://postgres:postgres@localhost:5432/autoliquid-db".to_string(),
         checkpoints_path: None,
@@ -17,5 +35,10 @@ async fn main() {
         metric_port: 9090,
     };
 
-    run_indexer(config).await.unwrap();
+    tracing::info!("Running indexer with config: {:?}", config);
+
+    match run_indexer(config).await {
+        Ok(_) => tracing::info!("Indexer completed successfully"),
+        Err(e) => tracing::error!("Indexer failed: {}", e),
+    }
 }

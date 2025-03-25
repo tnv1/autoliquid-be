@@ -7,12 +7,12 @@ pub trait PriceOracle: Sync + Send {
 }
 
 #[derive(Clone, Debug)]
-pub struct BlufinPriceOracle {
+pub struct BluefinPriceOracle {
     pub api_url: String,
     pub client: reqwest::Client,
 }
 
-impl BlufinPriceOracle {
+impl BluefinPriceOracle {
     pub fn new(api_url: String) -> Self {
         Self { api_url, client: reqwest::Client::new() }
     }
@@ -25,7 +25,7 @@ struct PoolInfo {
 }
 
 #[async_trait]
-impl PriceOracle for BlufinPriceOracle {
+impl PriceOracle for BluefinPriceOracle {
     async fn get_price(&self, pool_id: &str) -> anyhow::Result<f64> {
         tracing::info!("Getting price for pool {}", pool_id);
 
@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     #[tokio::test]
     async fn test_get_price() {
-        let oracle = BlufinPriceOracle::new("https://swap.api.sui-prod.bluefin.io".to_string());
+        let oracle = BluefinPriceOracle::new("https://swap.api.sui-prod.bluefin.io".to_string());
         let price = oracle
             .get_price("0x3b585786b13af1d8ea067ab37101b6513a05d2f90cfe60e8b1d9e1b46a63c4fa")
             .await

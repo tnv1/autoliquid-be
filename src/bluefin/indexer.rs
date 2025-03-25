@@ -6,11 +6,13 @@ use diesel::{
 };
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use serde::{Deserialize, Serialize};
 use sui_indexer_builder::indexer_builder::{DataMapper, IndexerProgressStore, Persistent};
 use sui_indexer_builder::progress::ProgressSavingPolicy;
 use sui_indexer_builder::sui_datasource::CheckpointTxnData;
 use sui_indexer_builder::{LIVE_TASK_TARGET_CHECKPOINT, Task, Tasks};
-use sui_types::base_types::ObjectID;
+use sui_types::base_types::{ObjectID, SuiAddress};
+use sui_types::digests::TransactionDigest;
 use sui_types::effects::TransactionEffectsAPI;
 use sui_types::event::Event;
 use sui_types::execution_status::ExecutionStatus;
@@ -19,26 +21,67 @@ use sui_types::transaction::{Command, TransactionDataAPI};
 
 use super::metrics::IndexerMetrics;
 use super::models;
-use super::types::{ProcessedTxnData, SuiTxnError};
-use crate::blufin::events::{PositionClosed, PositionOpened};
-use crate::blufin::models::SuiErrorTransactions;
-use crate::blufin::types::PositionUpdate;
+use crate::bluefin::events::{PositionClosed, PositionOpened};
+use crate::bluefin::models::SuiErrorTransactions;
 use crate::postgres::PgPool;
 use crate::schema::progress_store::{columns, dsl};
 use crate::schema::{self, sui_error_transactions};
 
 pub const POSITION_OPENED_EVENT: &str = "PositionOpened";
 pub const POSITION_CLOSED_EVENT: &str = "PositionClosed";
-pub const LIQUIDITY_PROVIDED_EVENT: &str = "LiquidityProvided";
-pub const LIQUIDITY_REMOVED_EVENT: &str = "LiquidityRemoved";
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Config {
+    pub remote_store_url: String,
+    pub db_url: String,
+    pub checkpoints_path: Option<String>,
+    pub sui_rpc_url: String,
+    pub package_id: String,
+    pub start_checkpoint: u64,
+    pub concurrency: u64,
+    pub metric_port: u16,
+}
+
+#[derive(Clone, Debug)]
+pub enum ProcessedTxnData {
+    Position(PositionUpdate),
+    Error(SuiTxnError),
+}
+
+#[derive(Clone, Debug)]
+pub struct PositionUpdate {
+    pub digest: String,
+    pub event_digest: String,
+    pub sender: String,
+    pub checkpoint: u64,
+    pub checkpoint_timestamp_ms: u64,
+    pub package: String,
+    pub pool_id: ObjectID,
+    pub position_id: ObjectID,
+    pub tick_lower: i32,
+    pub tick_upper: i32,
+    pub liquidity: u128,
+    pub price: f64,
+    pub is_close: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct SuiTxnError {
+    pub tx_digest: TransactionDigest,
+    pub sender: SuiAddress,
+    pub timestamp_ms: u64,
+    pub failure_status: String,
+    pub package: String,
+    pub cmd_idx: Option<u64>,
+}
 
 #[derive(Clone)]
-pub struct PgPersistent {
+pub struct BluefinStorage {
     pub pool: PgPool,
     save_progress_policy: ProgressSavingPolicy,
 }
 
-impl PgPersistent {
+impl BluefinStorage {
     pub fn new(pool: PgPool, save_progress_policy: ProgressSavingPolicy) -> Self {
         Self { pool, save_progress_policy }
     }
@@ -61,7 +104,7 @@ impl PgPersistent {
 }
 
 #[async_trait]
-impl Persistent<ProcessedTxnData> for PgPersistent {
+impl Persistent<ProcessedTxnData> for BluefinStorage {
     async fn write(&self, data: Vec<ProcessedTxnData>) -> Result<(), Error> {
         if data.is_empty() {
             tracing::info!("No data to write.");
@@ -140,7 +183,7 @@ impl Persistent<ProcessedTxnData> for PgPersistent {
 }
 
 #[async_trait]
-impl IndexerProgressStore for PgPersistent {
+impl IndexerProgressStore for BluefinStorage {
     async fn load_progress(&self, task_name: String) -> anyhow::Result<u64> {
         let mut conn = self.pool.get().await?;
         let cp: Option<models::ProgressStore> = dsl::progress_store
@@ -273,12 +316,12 @@ impl IndexerProgressStore for PgPersistent {
 }
 
 #[derive(Clone)]
-pub struct SuiDataMapper {
+pub struct BluefinDataMapper {
     pub metrics: IndexerMetrics,
     pub package_id: ObjectID,
 }
 
-impl DataMapper<CheckpointTxnData, ProcessedTxnData> for SuiDataMapper {
+impl DataMapper<CheckpointTxnData, ProcessedTxnData> for BluefinDataMapper {
     fn map(
         &self,
         (data, checkpoint_num, timestamp_ms): CheckpointTxnData,
@@ -317,7 +360,7 @@ impl DataMapper<CheckpointTxnData, ProcessedTxnData> for SuiDataMapper {
                     })?;
                 if !processed_sui_events.is_empty() {
                     tracing::info!(
-                        "SUI: Extracted {} blufin data entries for tx {}.",
+                        "SUI: Extracted {} bluefin data entries for tx {}.",
                         processed_sui_events.len(),
                         data.transaction.digest()
                     );

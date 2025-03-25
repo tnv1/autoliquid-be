@@ -1,5 +1,5 @@
 // pub mod apis;
-pub mod blufin;
+pub mod bluefin;
 pub mod postgres;
 pub mod schema;
 pub mod services;

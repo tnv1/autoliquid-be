@@ -1,4 +1,4 @@
-use autoliquid_be::services::dex::{BlufinDex, DexInterface, OpenPositionOptions};
+use autoliquid_be::services::dex::{BluefinDex, DexInterface, OpenPositionOptions};
 use sui_types::base_types::SuiAddress;
 use sui_types::crypto::SuiKeyPair;
 
@@ -8,14 +8,14 @@ async fn main() {
     let url = "https://fullnode.mainnet.sui.io:443";
     let package_id = "0x6c796c3ab3421a68158e0df18e4657b2827b1f8fed5ed4b82dba9c935988711b";
     let global_config = "0x03db251ba509a8d5d8777b6338836082335d93eecbdd09a11e190a1cff51c352";
-    let blufin_dex =
-        BlufinDex::new(url.to_string(), package_id.to_string(), global_config.to_string()).await;
+    let bluefin_dex =
+        BluefinDex::new(url.to_string(), package_id.to_string(), global_config.to_string()).await;
 
     let kp = SuiKeyPair::decode("<private-key>").unwrap();
     let addr = SuiAddress::from(&kp.public());
     tracing::info!("Address: {}", addr.to_string());
 
-    blufin_dex
+    bluefin_dex
         .open_position(
             &kp,
             OpenPositionOptions {

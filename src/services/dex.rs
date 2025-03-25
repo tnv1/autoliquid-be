@@ -105,13 +105,13 @@ pub trait DexInterface: Sync + Send {
     }
 }
 
-pub struct BlufinDex {
+pub struct BluefinDex {
     pub package_id: String,
     pub global_config: String,
     pub sui_client: SuiClient,
 }
 
-impl BlufinDex {
+impl BluefinDex {
     pub async fn new(rpc_url: String, package_id: String, global_config: String) -> Self {
         let sui_client = SuiClientBuilder::default().build(rpc_url).await.unwrap();
         Self { sui_client, package_id, global_config }
@@ -119,7 +119,7 @@ impl BlufinDex {
 }
 
 #[async_trait]
-impl DexInterface for BlufinDex {
+impl DexInterface for BluefinDex {
     async fn provide_liquidity(
         &self,
         keypair: &SuiKeyPair,

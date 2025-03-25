@@ -1,8 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
-use config::IndexerConfig;
-use indexer::{PgPersistent, SuiDataMapper};
+use indexer::{BluefinDataMapper, BluefinStorage, Config};
 use metrics::IndexerMetrics;
 use mysten_metrics::start_prometheus_server;
 use sui_data_ingestion_core::DataIngestionMetrics;
@@ -14,14 +13,12 @@ use sui_types::base_types::ObjectID;
 
 use crate::postgres::get_connection_pool;
 
-pub mod config;
 pub mod events;
 pub mod indexer;
 pub mod metrics;
 pub mod models;
-pub mod types;
 
-pub async fn run_indexer(config: IndexerConfig) -> anyhow::Result<()> {
+pub async fn run_indexer(config: Config) -> anyhow::Result<()> {
     // Init metrics server
     let metrics_address =
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), config.metric_port);
@@ -38,7 +35,7 @@ pub async fn run_indexer(config: IndexerConfig) -> anyhow::Result<()> {
     let policy = ProgressSavingPolicy::OutOfOrderSaveAfterDuration(
         OutOfOrderSaveAfterDurationPolicy::new(tokio::time::Duration::from_secs(30)),
     );
-    let datastore = PgPersistent::new(pg_pool, policy);
+    let datastore = BluefinStorage::new(pg_pool, policy);
     let sui_client = Arc::new(SuiClientBuilder::default().build(config.sui_rpc_url.clone()).await?);
     let sui_checkpoint_datasource = SuiCheckpointDatasource::new(
         config.remote_store_url,
@@ -53,7 +50,7 @@ pub async fn run_indexer(config: IndexerConfig) -> anyhow::Result<()> {
     let indexer = IndexerBuilder::new(
         "BluefinIndexer",
         sui_checkpoint_datasource,
-        SuiDataMapper {
+        BluefinDataMapper {
             metrics: indexer_meterics.clone(),
             package_id: ObjectID::from_hex_literal(&config.package_id.clone())
                 .unwrap_or_else(|err| panic!("Failed to parse bluefin package ID: {}", err)),
