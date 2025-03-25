@@ -1,6 +1,6 @@
 # Autonomous Liquidity Management Backend
 
-> **Note:** This project is currently under active development
+> **Note:** This project is currently under active development. Features and documentation may change as the project evolves.
 
 ## Overview
 
