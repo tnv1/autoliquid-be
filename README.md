@@ -61,21 +61,27 @@ The system consists of the following components:
 2. Copy `.env.example` to `.env` and configure the parameters
 3. Set up the database with docker
 
-```bash
-make db-up
-```
+    ```bash
+    make db-up
+    ```
 
 4. Run indexer:
 
-```bash
-cargo run --bin indexer
-```
+    ```bash
+    cargo run --bin indexer
+    ```
 
 5. Run app service
 
-```bash
-cargo run --bin app
-```
+    ```bash
+    cargo run --bin app
+    ```
+
+6. Cleanup db
+
+    ```bash
+    make db-down
+    ```
 
 ## Documents
 
