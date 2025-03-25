@@ -1,5 +1,7 @@
 # Autonomous Liquidity Management Backend
 
+> **Note:** This project is currently under active development
+
 ## Overview
 
 AutoLiquid is an autonomous liquidity management system for the Sui blockchain. This backend service monitors liquidity positions and automatically adjusts them based on market conditions to optimize returns.
