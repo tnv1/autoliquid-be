@@ -52,7 +52,7 @@ pub async fn run_indexer(config: Config) -> anyhow::Result<()> {
         sui_checkpoint_datasource,
         BluefinDataMapper {
             metrics: indexer_meterics.clone(),
-            package_id: ObjectID::from_hex_literal(&config.package_id.clone())
+            package_id: ObjectID::from_hex_literal(&config.bluefin_spot_package_id.clone())
                 .unwrap_or_else(|err| panic!("Failed to parse bluefin package ID: {}", err)),
         },
         datastore,

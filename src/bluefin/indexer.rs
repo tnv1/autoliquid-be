@@ -36,7 +36,7 @@ pub struct Config {
     pub db_url: String,
     pub checkpoints_path: Option<String>,
     pub sui_rpc_url: String,
-    pub package_id: String,
+    pub bluefin_spot_package_id: String,
     pub start_checkpoint: u64,
     pub concurrency: u64,
     pub metric_port: u16,
@@ -329,16 +329,8 @@ impl DataMapper<CheckpointTxnData, ProcessedTxnData> for BluefinDataMapper {
         if !data.input_objects.iter().any(|obj| {
             obj.data.type_().map(|t| t.address() == self.package_id.into()).unwrap_or_default()
         }) {
-            tracing::info!("No SUI events found in transaction: {}", data.transaction.digest());
             return Ok(vec![]);
         }
-
-        tracing::info!("Processing SUI transaction: {}", data.transaction.digest().to_string());
-
-        tracing::info!(
-            "Found events len {}",
-            data.events.as_ref().map(|e| e.data.len()).unwrap_or(0)
-        );
 
         self.metrics.total_transactions.inc();
 
@@ -400,8 +392,7 @@ pub fn process_sui_event(
     checkpoint_timestamp_ms: u64,
     package_id: ObjectID,
 ) -> anyhow::Result<Option<ProcessedTxnData>> {
-    Ok(if ev.type_.address == *package_id {
-        tracing::info!("Processing event: {:?}", ev);
+    Ok(if ev.type_.address.to_hex() == *package_id.to_hex() {
         match ev.type_.name.as_str() {
             POSITION_OPENED_EVENT => {
                 tracing::info!("Handle PositionOpened event: {:?}", ev);
