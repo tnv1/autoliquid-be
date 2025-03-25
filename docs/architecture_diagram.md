@@ -5,12 +5,13 @@
 ```mermaid
 graph TD
     subgraph "AutoLiquid Backend"
-        API[REST API Service]
+        API[REST API]
         Indexer[Indexer]
         DB[(PostgreSQL Database)]
         Cache[Cache Service]
         RepositionManager[Reposition Manager]
         PriceOracle[Price Oracle]
+        SignerStorage[Signer Storage]
     end
 
     subgraph "Blockchain"
@@ -34,6 +35,7 @@ graph TD
     RepositionManager --> Sui
     RepositionManager --> PriceOracle
     PriceOracle --> Sui
+    RepositionManager --> SignerStorage
     
     %% Database Tables
     subgraph "Database Schema"
@@ -94,6 +96,9 @@ graph TD
    - Provides price feeds for token pairs
    - Supports decision-making for repositioning logic
 
+8. **Signer Storage**
+   - Secure signers storage for user keys
+
 ## Data Flow
 
 1. The Indexer continuously polls the Sui blockchain for new transactions and events
@@ -149,7 +154,6 @@ Logs transactions that failed during processing
 ### position_updates
 
 Stores liquidity position data from the blockchain with indexes for efficient querying
-
 
 ## Implementation Considerations
 
