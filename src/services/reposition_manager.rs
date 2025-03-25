@@ -16,6 +16,7 @@ pub struct ManagedPosition {
     pub position_id: String,
     pub pool_id: String,
     pub user: String,
+    pub price: f64,
     pub tick_lower: i32,
     pub tick_upper: i32,
 }
@@ -52,9 +53,11 @@ impl RepositionManager for RepositionManagerImpl {
             for address in addresses {
                 if let Ok(positions) = self.get_positions(address.clone()).await {
                     for position in positions {
-                        let price =
-                            self.get_position_price(position.clone()).await.unwrap_or_default();
-                        let price_change = price - position.tick_lower as f64;
+                        let current_price = self
+                            .get_current_position_price(position.clone())
+                            .await
+                            .unwrap_or_default();
+                        let price_change = current_price - position.price as f64;
                         if price_change.abs() > self.config.price_change_threshold {
                             tracing::info!(
                                 "Repositioning position {:?} due to price change: {}",
@@ -93,7 +96,10 @@ impl RepositionManagerImpl {
         Self { db_pool, client, price_oracle, config, signer_storage }
     }
 
-    pub async fn get_position_price(&self, position: ManagedPosition) -> anyhow::Result<f64> {
+    pub async fn get_current_position_price(
+        &self,
+        position: ManagedPosition,
+    ) -> anyhow::Result<f64> {
         println!("Getting price for position {:?}", position);
         self.get_pool_price(position.pool_id.clone()).await
     }
@@ -115,6 +121,7 @@ impl RepositionManagerImpl {
                 user: p.sender.clone(),
                 tick_lower: p.tick_lower,
                 tick_upper: p.tick_upper,
+                price: p.price.parse().unwrap_or_default(),
             })
             .collect())
     }

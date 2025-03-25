@@ -149,6 +149,9 @@ impl Persistent<ProcessedTxnData> for BluefinStorage {
                         tick_upper: position_update.tick_upper,
                         liquidity: position_update.liquidity.to_string(),
                         is_close: position_update.is_close,
+                        // TODO: Should be get price from current pool state
+                        // this price can hanlde by indexing LiquidityProvided/LiquidityRemoved events
+                        // using the field `current_sqrt_price` in this event
                         price: "0".to_string(),
                     });
                 }
