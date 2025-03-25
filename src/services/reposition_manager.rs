@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use sui_types::base_types::{ObjectID, SuiAddress};
+use sui_types::base_types::SuiAddress;
 
 use super::price_oracle::PriceOracle;
 use crate::{
+    bluefin::models::get_active_positions_by_sender,
     postgres::PgPool,
     services::dex::{DexInterface, RepositionOptions},
     signer::Storage,
@@ -12,14 +13,11 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct ManagedPosition {
-    pub position_id: ObjectID,
-    pub pool_id: ObjectID,
-    pub user: SuiAddress,
-    pub token_a: String,
-    pub token_b: String,
+    pub position_id: String,
+    pub pool_id: String,
+    pub user: String,
     pub tick_lower: i32,
     pub tick_upper: i32,
-    pub status: String,
 }
 
 #[async_trait]
@@ -43,24 +41,38 @@ pub struct RepositionManagerImpl {
 #[async_trait]
 impl RepositionManager for RepositionManagerImpl {
     async fn run(&self) {
-        tracing::info!("Service is running");
+        tracing::info!("Starting reposition manager");
         loop {
-            if let Ok(positions) = self.get_all_active_positions().await {
-                for position in positions {
-                    if let Ok(price) = self.get_position_price(position.clone()).await {
-                        println!("Price for position {:?} is {}", position, price);
+            let addresses = self.signer_storage.get_all_addresses().unwrap_or_default();
+            if addresses.is_empty() {
+                tracing::info!("No addresses found, sleeping for 5 seconds");
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+            for address in addresses {
+                if let Ok(positions) = self.get_positions(address.clone()).await {
+                    for position in positions {
+                        let price =
+                            self.get_position_price(position.clone()).await.unwrap_or_default();
+                        let price_change = price - position.tick_lower as f64;
+                        if price_change.abs() > self.config.price_change_threshold {
+                            tracing::info!(
+                                "Repositioning position {:?} due to price change: {}",
+                                position,
+                                price_change
+                            );
+                            let options = RepositionOptions {
+                                pool_id: position.pool_id.clone(),
+                                position_id: position.position_id.clone(),
+                            };
+                            let signer =
+                                self.signer_storage.get_signer_by_address(&address).unwrap();
+                            self.client
+                                .reposition(&signer, options)
+                                .await
+                                .unwrap_or_else(|e| tracing::error!("Failed to reposition: {}", e));
+                        }
                     }
-                    let signer = self.signer_storage.get_signer_by_address(&position.user).unwrap();
-                    self.client
-                        .reposition(
-                            &signer,
-                            RepositionOptions {
-                                pool_id: "".to_string(),
-                                position_id: "".to_string(),
-                            },
-                        )
-                        .await
-                        .unwrap();
                 }
             }
             tracing::info!("Sleeping for {} ms", self.config.poll_interval_ms);
@@ -81,26 +93,29 @@ impl RepositionManagerImpl {
         Self { db_pool, client, price_oracle, config, signer_storage }
     }
 
-    pub async fn get_active_positions(
-        &self,
-        user: SuiAddress,
-    ) -> anyhow::Result<Vec<ManagedPosition>> {
-        println!("Getting user positions for {}", user.to_string());
-        Ok(vec![])
-    }
-
-    pub async fn get_all_active_positions(&self) -> anyhow::Result<Vec<ManagedPosition>> {
-        println!("Getting all active positions");
-        Ok(vec![])
-    }
-
     pub async fn get_position_price(&self, position: ManagedPosition) -> anyhow::Result<f64> {
         println!("Getting price for position {:?}", position);
-        self.get_pool_price(position.pool_id.clone().to_hex()).await
+        self.get_pool_price(position.pool_id.clone()).await
     }
 
     pub async fn get_pool_price(&self, pool_id: String) -> anyhow::Result<f64> {
         println!("Getting price for pool {}", pool_id.to_string());
         self.price_oracle.get_price(&pool_id).await
+    }
+
+    pub async fn get_positions(&self, address: SuiAddress) -> anyhow::Result<Vec<ManagedPosition>> {
+        let positions = get_active_positions_by_sender(&self.db_pool, &address.to_string())
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        Ok(positions
+            .into_iter()
+            .map(|p| ManagedPosition {
+                position_id: p.position_id.clone(),
+                pool_id: p.pool_id.clone(),
+                user: p.sender.clone(),
+                tick_lower: p.tick_lower,
+                tick_upper: p.tick_upper,
+            })
+            .collect())
     }
 }

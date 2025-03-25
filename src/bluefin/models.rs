@@ -75,7 +75,7 @@ pub struct PositionUpdate {
 
 pub async fn get_active_positions_by_sender(
     pool: &PgPool,
-    sender_filter: &str,
+    sender: &str,
 ) -> QueryResult<Vec<PositionUpdate>> {
     let mut conn = pool.get().await.map_err(|e| {
         diesel::result::Error::DatabaseError(
@@ -97,7 +97,7 @@ pub async fn get_active_positions_by_sender(
           AND pu.sender = $1
     "#;
 
-    sql_query(sql).bind::<Text, _>(sender_filter).load::<PositionUpdate>(&mut conn).await
+    sql_query(sql).bind::<Text, _>(sender).load::<PositionUpdate>(&mut conn).await
 }
 
 #[cfg(test)]
