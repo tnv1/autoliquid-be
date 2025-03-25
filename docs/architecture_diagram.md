@@ -7,25 +7,29 @@ graph TD
     subgraph "AutoLiquid Backend"
         API[REST API]
         Indexer[Indexer]
-        DB[(PostgreSQL Database)]
+        DB[Database]
         Cache[Cache Service]
         RepositionManager[Reposition Manager]
         PriceOracle[Price Oracle]
-        SignerStorage[Signer Storage]
+        AgentManager[Agent Manager]
     end
 
     subgraph "Blockchain"
         Sui[Sui Blockchain]
     end
 
-    subgraph "Frontend/Clients"
-        Web[Web Application]
-        Mobile[Mobile App]
+    subgraph "Agents"
+        Agent1[Agent 1]
+        Agent2[Agent 2]
+        Agent3[Agent 3]
     end
 
+
     %% Connections
-    Web --> API
-    Mobile --> API
+    Agent1 --> API
+    Agent2 --> API
+    Agent3 --> API
+    API --> AgentManager
     API --> DB
     API --> Cache
     Indexer --> DB
@@ -35,7 +39,7 @@ graph TD
     RepositionManager --> Sui
     RepositionManager --> PriceOracle
     PriceOracle --> Sui
-    RepositionManager --> SignerStorage
+    RepositionManager --> AgentManager
     
     %% Database Tables
     subgraph "Database Schema"
@@ -54,20 +58,20 @@ graph TD
     classDef external fill:#dfd,stroke:#333,stroke-width:1px;
     
     class API,Indexer,RepositionManager primary;
-    class DB,Cache,PriceOracle secondary;
+    class DB,Cache,PriceOracle,AgentManager secondary;
     class Sui,Web,Mobile external;
 ```
 
 ## Component Description
 
 1. **REST API Service**
-   - Provides HTTP endpoints for frontend applications
-   - Handles user requests for position data, pool information, etc.
+   - Provides HTTP endpoints for agent clients
+   - Handles requests for position data, pool information, etc.
    - Communicates with the database and Sui blockchain
 
 2. **Indexer**
    - Syncs data from the Sui blockchain
-   - Processes transactions and updates position information
+   - Processes transactions and updates position information. Keep track all positions and the price at time of adding liquidity
    - Tracks progress using the progress_store table
 
 3. **PostgreSQL Database**
@@ -75,7 +79,7 @@ graph TD
    - Main tables:
      - progress_store: Tracks sync progress
      - sui_error_transactions: Logs failed transactions
-     - position_updates: Stores liquidity position information
+     - position_updates: Stores liquidity position information, price at the time of adding liquidity
 
 4. **Cache Service**
    - Provides fast access to frequently requested data
@@ -96,19 +100,20 @@ graph TD
    - Provides price feeds for token pairs
    - Supports decision-making for repositioning logic
 
-8. **Signer Storage**
-   - Secure signers storage for user keys
+8. **Agent Manager**
+   - Secure agent signer for operation
 
 ## Data Flow
 
-1. The Indexer continuously polls the Sui blockchain for new transactions and events
-2. Position updates are processed and stored in the database
-3. The REST API service serves data to frontend applications
-4. Frontend applications display position information to users
+1. Agents can register to Agent Manager through REST API
+2. The Indexer continuously polls the Sui blockchain for new transactions and events
+3. Position updates are processed and stored in the database
+4. The REST API service serves data to agent clients
 5. The Reposition Manager continuously monitors managed positions and prices
 6. When price movement triggers a reposition:
+   - Request signer from Agent Manager
    - Liquidity is removed from the old position
-   - A new position is created with optimized range
+   - A new position is created with range of current price
    - Transaction results are stored in the database
 
 ## Repositioning Logic
@@ -130,6 +135,7 @@ The Reposition Manager implements an automated strategy for maximizing liquidity
    - Calculates a new ±5% range around the current price
 
 4. **Repositioning Execution**
+   - Request signer from Agent Manager
    - Removes liquidity from the old range
    - Handles the asymmetric token balance resulting from price movement
    - May split into multiple positions if token ratios require it
@@ -157,8 +163,7 @@ Stores liquidity position data from the blockchain with indexes for efficient qu
 
 ## Implementation Considerations
 
+- In the current implementation, use Inmemory Singer Storage to replace Agent Manager
 - Use a robust ORM like Diesel for database interactions
 - Implement proper error handling and retry mechanisms for blockchain interactions
-- Consider implementing rate limiting for API endpoints
-- Use connection pooling for database access
 - Implement proper logging and monitoring
