@@ -43,5 +43,5 @@ AutoLiquid is an autonomous liquidity management system for the Sui blockchain. 
 6. Cleanup db
 
     ```bash
-    make db-down
+    make db-clean
     ```
