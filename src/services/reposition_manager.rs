@@ -4,9 +4,11 @@ use async_trait::async_trait;
 use sui_types::base_types::{ObjectID, SuiAddress};
 
 use super::price_oracle::PriceOracle;
-use crate::postgres::PgPool;
-use crate::services::dex::{DexInterface, RepositionOptions};
-use crate::signer::Storage;
+use crate::{
+    postgres::PgPool,
+    services::dex::{DexInterface, RepositionOptions},
+    signer::Storage,
+};
 
 #[derive(Clone, Debug)]
 pub struct ManagedPosition {

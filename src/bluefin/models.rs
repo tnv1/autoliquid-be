@@ -1,5 +1,4 @@
-use diesel::data_types::PgTimestamp;
-use diesel::{Identifiable, Insertable, Queryable, Selectable};
+use diesel::{Identifiable, Insertable, Queryable, Selectable, data_types::PgTimestamp};
 use sui_indexer_builder::{LIVE_TASK_TARGET_CHECKPOINT, Task};
 
 use crate::schema::{position_updates, progress_store, sui_error_transactions};

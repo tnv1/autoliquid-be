@@ -1,12 +1,11 @@
 use autoliquid_be::services::dex::{BluefinDex, DexInterface, OpenPositionOptions};
-use sui_types::base_types::SuiAddress;
-use sui_types::crypto::SuiKeyPair;
+use sui_types::{base_types::SuiAddress, crypto::SuiKeyPair};
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
     let url = "https://fullnode.mainnet.sui.io:443";
-    let package_id = "0x6c796c3ab3421a68158e0df18e4657b2827b1f8fed5ed4b82dba9c935988711b";
+    let package_id = "0x3492c874c1e3b3e2984e8c41b589e642d4d0a5d6459e5a9cfc2d52fd7c89c267";
     let global_config = "0x03db251ba509a8d5d8777b6338836082335d93eecbdd09a11e190a1cff51c352";
     let bluefin_dex =
         BluefinDex::new(url.to_string(), package_id.to_string(), global_config.to_string()).await;

@@ -1,5 +1,7 @@
-use sui_types::base_types::SuiAddress;
-use sui_types::crypto::{EncodeDecodeBase64, SuiKeyPair, get_key_pair};
+use sui_types::{
+    base_types::SuiAddress,
+    crypto::{EncodeDecodeBase64, SuiKeyPair, get_key_pair},
+};
 
 fn main() {
     // Generate a new Ed25519 keypair

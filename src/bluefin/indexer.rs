@@ -1,31 +1,40 @@
 use anyhow::Error;
 use async_trait::async_trait;
-use diesel::dsl::now;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper, TextExpressionMethods,
+    dsl::now,
 };
-use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
 use serde::{Deserialize, Serialize};
-use sui_indexer_builder::indexer_builder::{DataMapper, IndexerProgressStore, Persistent};
-use sui_indexer_builder::progress::ProgressSavingPolicy;
-use sui_indexer_builder::sui_datasource::CheckpointTxnData;
-use sui_indexer_builder::{LIVE_TASK_TARGET_CHECKPOINT, Task, Tasks};
-use sui_types::base_types::{ObjectID, SuiAddress};
-use sui_types::digests::TransactionDigest;
-use sui_types::effects::TransactionEffectsAPI;
-use sui_types::event::Event;
-use sui_types::execution_status::ExecutionStatus;
-use sui_types::full_checkpoint_content::CheckpointTransaction;
-use sui_types::transaction::{Command, TransactionDataAPI};
+use sui_indexer_builder::{
+    LIVE_TASK_TARGET_CHECKPOINT, Task, Tasks,
+    indexer_builder::{DataMapper, IndexerProgressStore, Persistent},
+    progress::ProgressSavingPolicy,
+    sui_datasource::CheckpointTxnData,
+};
+use sui_types::{
+    base_types::{ObjectID, SuiAddress},
+    digests::TransactionDigest,
+    effects::TransactionEffectsAPI,
+    event::Event,
+    execution_status::ExecutionStatus,
+    full_checkpoint_content::CheckpointTransaction,
+    transaction::{Command, TransactionDataAPI},
+};
 
-use super::metrics::IndexerMetrics;
-use super::models;
-use crate::bluefin::events::{PositionClosed, PositionOpened};
-use crate::bluefin::models::SuiErrorTransactions;
-use crate::postgres::PgPool;
-use crate::schema::progress_store::{columns, dsl};
-use crate::schema::{self, sui_error_transactions};
+use super::{metrics::IndexerMetrics, models};
+use crate::{
+    bluefin::{
+        events::{PositionClosed, PositionOpened},
+        models::SuiErrorTransactions,
+    },
+    postgres::PgPool,
+    schema::{
+        self,
+        progress_store::{columns, dsl},
+        sui_error_transactions,
+    },
+};
 
 pub const POSITION_OPENED_EVENT: &str = "PositionOpened";
 pub const POSITION_CLOSED_EVENT: &str = "PositionClosed";

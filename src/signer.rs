@@ -1,14 +1,16 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-use sui_types::base_types::SuiAddress;
-use sui_types::crypto::SuiKeyPair;
+use sui_types::{base_types::SuiAddress, crypto::SuiKeyPair};
 
 // Signer storage trait. This trait defines the interface for storing and retrieving signers.
 // Required thread safety access.
 pub trait Storage: Sync + Send {
     fn get_signer_by_address(&self, address: &SuiAddress) -> anyhow::Result<SuiKeyPair>;
     fn store_signer(&mut self, signer: SuiKeyPair) -> anyhow::Result<()>;
+    fn get_all_addresses(&self) -> anyhow::Result<Vec<SuiAddress>>;
 }
 
 pub struct InmemoryStorage {
@@ -40,6 +42,13 @@ impl Storage for InmemoryStorage {
 
         signers.insert(address, signer);
         Ok(())
+    }
+
+    fn get_all_addresses(&self) -> anyhow::Result<Vec<SuiAddress>> {
+        let signers =
+            self.signers.lock().map_err(|e| anyhow::anyhow!("Failed to acquire lock: {}", e))?;
+
+        Ok(signers.keys().cloned().collect())
     }
 }
 

@@ -1,13 +1,17 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 
 use indexer::{BluefinDataMapper, BluefinStorage, Config};
 use metrics::IndexerMetrics;
 use mysten_metrics::start_prometheus_server;
 use sui_data_ingestion_core::DataIngestionMetrics;
-use sui_indexer_builder::indexer_builder::IndexerBuilder;
-use sui_indexer_builder::progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy};
-use sui_indexer_builder::sui_datasource::SuiCheckpointDatasource;
+use sui_indexer_builder::{
+    indexer_builder::IndexerBuilder,
+    progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy},
+    sui_datasource::SuiCheckpointDatasource,
+};
 use sui_sdk::SuiClientBuilder;
 use sui_types::base_types::ObjectID;
 
